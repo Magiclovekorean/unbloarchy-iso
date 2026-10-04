@@ -21,10 +21,10 @@ Run `./bin/omarchy-iso-make`; output goes into `./release`. By default the ISO u
 For local development, build the ISO from sibling checkouts:
 
 ```bash
-./bin/omarchy-iso-make --local-source ../omarchy-installer ../omarchy-pkgs
+./bin/omarchy-iso-make --local-source ../unbloarchy ../omarchy-pkgs
 ```
 
-Despite the local folder name, the first argument is the Omarchy source checkout (runtime commands, configs, setup scripts, themes, shell, migrations). The installer itself lives in this ISO repo.
+The first argument is the Unbloarchy source checkout (runtime commands, configs, setup scripts, themes, shell, migrations). The installer itself lives in this ISO repo.
 
 Use `--dev` or `--rc` to build against those package channels. Both `--dev` and `--edge` select the dev packages from the edge mirror.
 
