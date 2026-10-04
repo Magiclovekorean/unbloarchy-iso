@@ -139,7 +139,11 @@ sed -i -E '/^(linux|broadcom-wl)$/d' "$build_cache_dir/packages.x86_64"
 # already in the mirror and we filter them out below. Without it, pacman -Syw
 # pulls the published omarchy* from the network mirror like any other package.
 if [[ -d /omarchy-source ]]; then
-  base_pkg_lists=(/omarchy-source/install/omarchy-base.packages /omarchy-source/install/omarchy-other.packages)
+  source /builder/source-package-lists.sh
+  if ! select_source_package_lists /omarchy-source; then
+    echo "ERROR: local source checkout must contain either install/unbloarchy-{base,other}.packages or install/omarchy-{base,other}.packages" >&2
+    exit 1
+  fi
   setup_form=/omarchy-source/install/provisioning/setup-form.sh
 else
   # Pull the same package lists out of the freshly-downloaded Omarchy runtime
