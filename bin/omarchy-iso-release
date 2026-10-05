@@ -45,7 +45,7 @@ fi
 # A version that already numbers its candidate (4.0.2rc2) is the complete
 # artifact name; the bare -rc suffix exists only for an unnumbered candidate.
 # Without this, every candidate of a train uploads over the same
-# omarchy-X.Y.Z-rc.iso and testers cannot tell which rc they are holding.
+# unbloarchy-X.Y.Z-rc.iso and testers cannot tell which rc they are holding.
 if [[ $BUILD_VERSION == *rc* ]]; then
   RELEASE_SUFFIX=""
 fi
@@ -63,7 +63,7 @@ fi
 
 # Sign and upload ISO
 latest_iso=$(\ls -t "$BUILD_RELEASE_PATH"/*x86_64-"$ISO_REF".iso | head -n1)
-release_iso="$BUILD_RELEASE_PATH/omarchy-$BUILD_VERSION$RELEASE_SUFFIX.iso"
+release_iso="$BUILD_RELEASE_PATH/unbloarchy-$BUILD_VERSION$RELEASE_SUFFIX.iso"
 cp "$latest_iso" "$release_iso"
 
 echo -e "\e[32mSigning $ISO_REF ISO\e[0m"
