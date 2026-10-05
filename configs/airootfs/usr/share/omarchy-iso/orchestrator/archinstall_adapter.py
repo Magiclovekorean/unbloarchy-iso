@@ -13,7 +13,7 @@ The canonical call sequence (mirrored from archinstall.scripts.guided.py) is:
         # configs do their own mounting before the Installer context opens.
         if disk_config.config_type != DiskLayoutType.Pre_mount:
             inst.mount_ordered_layout()
-        inst.sanity_check(offline=, skip_ntp=, skip_wkd=)
+        inst.sanity_check(skip_ntp=, skip_wkd=)          # see sanity_check()
         inst.generate_key_files()                     # encrypted only
         inst.set_mirrors(handler, mirror_config, on_target=False)
         inst.minimal_installation(...)                # base + linux pacstrap
@@ -216,6 +216,21 @@ def _method_accepts(method, name: str) -> bool:
 
 def _method_accepts_users(method) -> bool:
     return _method_accepts(method, "users")
+
+
+def sanity_check(installer: Installer) -> None:
+    """Run archinstall's pre-flight checks before the base install.
+
+    archinstall 4.5 dropped `offline` from sanity_check; 4.4 and earlier accept
+    it. Passing it unconditionally dies with "unexpected keyword argument" on
+    4.5, and the ISO does not pin archinstall, so the mirror decides which one
+    it gets. Probe instead, the same way install_applications handles `users`.
+    """
+    kwargs = {"skip_ntp": True, "skip_wkd": True}
+    if _method_accepts(installer.sanity_check, "offline"):
+        kwargs["offline"] = True
+
+    installer.sanity_check(**kwargs)
 
 
 def install_applications(installer: Installer, arch_config: ArchConfig) -> None:
