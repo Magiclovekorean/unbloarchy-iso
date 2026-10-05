@@ -166,9 +166,12 @@ class KernelSelectionTest(unittest.TestCase):
                 files = {
                     f"usr/lib/modules/7.2-test/pkgbase": expected + "\n",
                     "usr/lib/modules/7.2-test/build/include/config/kernel.release": "7.2-test\n",
-                    "boot/limine.conf": "/Omarchy\n",
+                    # The entry limine-entry-tool writes for TARGET_OS_NAME,
+                    # which this fixture does not set, so it resolves to the
+                    # upstream default.
+                    "boot/limine.conf": "/+Omarchy\ncomment: Omarchy\n",
                     "etc/kernel/cmdline": "root=UUID=test\n",
-                    "etc/default/limine": "CUSTOM_UKI_NAME=omarchy\n",
+                    "etc/default/limine": "CUSTOM_UKI_NAME=omarchy\nTARGET_OS_NAME=Omarchy\n",
                     "boot/EFI/limine/limine_x64.efi": "bootloader",
                     f"boot/EFI/Linux/omarchy_{expected}.efi": "UKI",
                 }

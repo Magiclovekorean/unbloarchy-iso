@@ -1309,9 +1309,15 @@ def finalize_limine_boot(ctx: InstallContext) -> None:
         check=False,
         capture_output=True,
     )
-    if "Omarchy" not in limine_conf.read_text():
-        raise RuntimeError(f"{limine_conf} has no Omarchy entry")
-    if "cryptdevice=" in cmdline and "cryptdevice=" not in limine_conf.read_text():
+    limine_text = limine_conf.read_text()
+
+    # limine-entry-tool keys the OS entry by TARGET_OS_NAME, so ask that config
+    # what the entry is called instead of asserting a brand string: a renamed
+    # product otherwise fails here on a correctly generated boot entry.
+    os_name = _limine_setting(config_text, "TARGET_OS_NAME", "Omarchy")
+    if not _limine_os_entry_exists(limine_text, os_name):
+        raise RuntimeError(f"{limine_conf} has no {os_name} entry")
+    if "cryptdevice=" in cmdline and "cryptdevice=" not in limine_text:
         raise RuntimeError(f"encrypted install but {limine_conf} has no cryptdevice=")
 
 
@@ -1337,6 +1343,19 @@ def _limine_combined_config_text(ctx: InstallContext, default_text: str) -> str:
     # /etc/default/limine has highest priority in limine-entry-tool.
     chunks.append(default_text)
     return "\n".join(chunks)
+
+
+def _limine_os_entry_exists(limine_text: str, os_name: str) -> bool:
+    """Return whether limine.conf carries the limine-entry-tool OS entry.
+
+    The entry opens with a `/+<TARGET_OS_NAME>` header and repeats the name in
+    `comment:` lines the tool writes. Both spellings are checked because the
+    comment is what limine-entry-tool uses to find its own entry on a later
+    run, so a config carrying one without the other is a half-written entry.
+    """
+    header = re.compile(rf"^\s*/\+{re.escape(os_name)}\s*$", re.M)
+    comment = re.compile(rf"^\s*comment:\s*{re.escape(os_name)}\s*$", re.M)
+    return bool(header.search(limine_text) and comment.search(limine_text))
 
 
 def _limine_setting(config_text: str, name: str, fallback: str | None = None) -> str | None:
@@ -1655,8 +1674,14 @@ def validate_boot(ctx: InstallContext) -> None:
     if not limine_conf.exists():
         raise RuntimeError(f"{limine_conf} missing")
     limine_conf_text = limine_conf.read_text()
-    if "Omarchy" not in limine_conf_text:
-        raise RuntimeError(f"{limine_conf} has no Omarchy entry")
+
+    # Same reasoning as finalize_limine_boot: the entry is named by
+    # TARGET_OS_NAME, so resolve it rather than asserting a brand string.
+    default_limine = ctx.target / "etc" / "default" / "limine"
+    config_text = _limine_combined_config_text(ctx, default_limine.read_text())
+    entry_os_name = _limine_setting(config_text, "TARGET_OS_NAME", "Omarchy")
+    if not _limine_os_entry_exists(limine_conf_text, entry_os_name):
+        raise RuntimeError(f"{limine_conf} has no {entry_os_name} entry")
 
     if ctx.encrypt and "cryptdevice=" not in limine_conf_text:
         raise RuntimeError(f"Encrypted install but {limine_conf} has no cryptdevice=")
@@ -1665,8 +1690,6 @@ def validate_boot(ctx: InstallContext) -> None:
     if not kernel_cmdline.exists():
         raise RuntimeError(f"{kernel_cmdline} missing — UKI would have no cmdline")
 
-    default_limine = ctx.target / "etc" / "default" / "limine"
-    config_text = _limine_combined_config_text(ctx, default_limine.read_text())
     uki_prefix = _limine_setting(config_text, "CUSTOM_UKI_NAME", "omarchy") or "omarchy"
     kernel = storage.get("kernel") or (ctx.user_configuration.get("kernels") or ["linux-omarchy"])[0]
 
