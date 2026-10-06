@@ -270,6 +270,7 @@ user_form() {
 
   omarchy_prompt_identity || return $?
   omarchy_prompt_hostname || return $?
+  omarchy_prompt_encryption || return $?
   omarchy_prompt_timezone || return $?
 }
 
@@ -298,6 +299,7 @@ Full name,${full_name:-[Skipped]}
 Email address,${email_address:-[Skipped]}
 Hostname,$hostname
 Timezone,$timezone
+Disk encryption,$([[ $encrypt_installation == true ]] && echo "Yes" || echo "No")
 Keyboard,$keyboard" |
       gum table -s "," -p | sed "s/^/${PADDING_LEFT_SPACES}/"
 
@@ -611,10 +613,12 @@ run_partition_decide() {
     return $?
   fi
 
-  # Default to encrypted and hide the unencrypted path behind Ctrl+C,
-  # matching the full-disk flow. The dedicated Omarchy ESP always supports
-  # LUKS, so encryption is always on the table here.
-  local mode="encrypted" affirmative confirm_status
+  # Seeded from the form, with Ctrl+C still available as a last-moment
+  # override. The dedicated Omarchy ESP always supports LUKS, so encryption
+  # stays on the table either way.
+  local mode=encrypted affirmative confirm_status
+
+  $encrypt_installation || mode=unencrypted
 
   while true; do
     clear_logo
@@ -627,6 +631,7 @@ run_partition_decide() {
         affirmative="Yes, install"
         ;;
       unencrypted)
+        say --foreground 8 "Press Ctrl+C for an encrypted install."
         affirmative="Yes, install without encryption"
         ;;
     esac
@@ -947,8 +952,13 @@ install_mode_form() {
 }
 
 confirm_disk_overwrite() {
-  local mode="encrypted"
+  # Seeded from the form so confirming doesn't silently flip a choice made two
+  # screens earlier. Ctrl+C still overrides it for anyone who changes their mind
+  # at the last moment.
+  local mode=encrypted
   local affirmative confirm_status
+
+  $encrypt_installation || mode=unencrypted
 
   while true; do
     clear_logo
@@ -959,6 +969,7 @@ confirm_disk_overwrite() {
       say --foreground 8 "Press Ctrl+C for unencrypted install."
       affirmative="Yes, install"
     else
+      say --foreground 8 "Press Ctrl+C for an encrypted install."
       affirmative="Yes, install without encryption"
     fi
 
@@ -1034,6 +1045,9 @@ select_installation() {
 
 defer_provisioning=false
 install_target="full_disk"
+# Seeded here rather than by the form because a deferred install never runs
+# user_step, so the disk screens still need a defined choice.
+encrypt_installation=true
 
 # Let the live VT reach its settled width before the first screen so the logo
 # isn't measured against the transient 80-column boot console.
