@@ -439,7 +439,7 @@ set -e
 if visible_screen | grep -qF "install medium"; then
   fail "an unrelated failure gets no media banner" "$(visible_screen | tail -n 25)"
 fi
-visible_screen | grep -qF "Omarchy installation stopped" ||
+visible_screen | grep -qF "Unbloarchy installation stopped" ||
   fail "an unrelated failure still renders the normal failure screen" "$(visible_screen | tail -n 25)"
 pass "an unrelated failure renders the failure screen unchanged"
 

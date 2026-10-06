@@ -68,24 +68,24 @@ whimsy=(
 )
 
 tips=(
-  "Super + Space opens the Omarchy menu for apps, settings, and more"
+  "Super + Space opens the Unbloarchy menu for apps, settings, and more"
   "Super + K shows all the key bindings"
   "Super is the Windows or command key on your keyboard"
   "Use Xournal++ to sign PDFs"
   "Share files with phones and laptops using LocalSend"
   "Turn any website into an app with Install > Web App in the menu"
-  "Super + Return opens a terminal, Super + Shift + Return the browser"
+  "Super + Return opens a terminal, Super + B opens the browser"
   "Edit images with Pinta, videos with Kdenlive, docs with LibreOffice"
-  "Super + Ctrl + Print grabs text off the screen with OCR"
+  "Super + O grabs text off the screen with OCR"
   "Print takes a screenshot, Alt + Print records the screen"
   "Set a reminder with Super + Ctrl + R"
-  "Switch themes from Style > Theme in the Omarchy menu"
+  "Switch themes from Style > Theme in the Unbloarchy menu"
   "Double-click the menu bar to make it transparent"
   "Run a full Windows VM via Install > Windows in the menu"
-  "Super + Ctrl + V opens the clipboard manager"
+  "Super + V opens the clipboard manager"
   "Super + 1 through 0 switches workspaces, add Shift to bring the window"
-  "Super + Print picks a color from anywhere on screen"
-  "Keep the system fresh with Update in the Omarchy menu"
+  "Super + Shift + C picks a color from anywhere on screen"
+  "Keep the system fresh with Update in the Unbloarchy menu"
 )
 
 cleanup() {
@@ -315,7 +315,7 @@ render_logo() {
       printf '\r%s%s%b%s%b\n' "$CLEAR_LINE" "$pad" "$GREEN" "$line" "$RESET"
     done <"$LOGO_PATH"
   else
-    center "${GREEN}Omarchy${RESET}" "$CONTENT_WIDTH"
+    center "${GREEN}Unbloarchy${RESET}" "$CONTENT_WIDTH"
   fi
 }
 
@@ -718,7 +718,7 @@ install_duration() {
 }
 
 render_finish() {
-  local duration effect_canvas_width title="Installed Omarchy"
+  local duration effect_canvas_width title="Installed Unbloarchy"
   duration="$(install_duration || true)"
   [[ -n $duration ]] && title+=" in ${duration}"
   # ttfx centers its text two columns right of plain centering. A canvas two
@@ -922,7 +922,7 @@ render_failure() {
   blank_line
   render_logo
   blank_line
-  center "${RED}Omarchy installation stopped${RESET}" "$CONTENT_WIDTH"
+  center "${RED}Unbloarchy installation stopped${RESET}" "$CONTENT_WIDTH"
   center "Installer exited with status $status" "$CONTENT_WIDTH"
 
   render_media_diagnosis "$media_diagnosis"
@@ -938,7 +938,7 @@ render_failure() {
   blank_line
   render_failure_log_tail "$(media_diagnosis_rows "$media_diagnosis")"
   blank_line
-  center "${DIM}Get help at https://omarchy.org/discord${RESET}" "$CONTENT_WIDTH"
+  center "${DIM}Get help at https://discord.gg/tXFUdasqhY${RESET}" "$CONTENT_WIDTH"
   blank_line
 }
 
