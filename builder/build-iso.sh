@@ -23,6 +23,19 @@ esac
 : "${OMARCHY_NVIM_PACKAGE:=omarchy-nvim}"
 export OMARCHY_RUNTIME_PACKAGE OMARCHY_SETTINGS_PACKAGE OMARCHY_NVIM_PACKAGE
 
+# pacman 7 sandboxes its downloads with Landlock and fails every sync on a
+# kernel without it (Namespace's AmpereOne arm64 machines): "restricting
+# filesystem access failed because Landlock is not supported by the kernel".
+# There, every pacman in this container (pacstrap's too) runs with
+# --disable-sandbox, which pacman provides for exactly this. A wrapper rather
+# than DisableSandbox in a config: pacman-offline.conf ships on the ISO.
+if ! grep -qw landlock /sys/kernel/security/lsm 2>/dev/null; then
+  echo "No Landlock in this kernel: pacman runs with --disable-sandbox in this container"
+  printf '#!/bin/sh\nexec /usr/bin/pacman --disable-sandbox "$@"\n' >/usr/local/bin/pacman
+  chmod +x /usr/local/bin/pacman
+  hash -r
+fi
+
 # Packages installed into the Arch container used to build the ISO.
 pacman-key --init
 pacman --noconfirm -Sy archlinux-keyring
@@ -41,11 +54,14 @@ pacman-key --lsign-key 40DFB630FF42BCFFB047046CF0134EE680CAC571
 pacman --config /configs/pacman-online-${OMARCHY_MIRROR}.conf --noconfirm -Sy omarchy-keyring
 pacman-key --populate omarchy
 
-# Append the [omarchy] repo to the container's /etc/pacman.conf so subsequent
-# tools (notably makepkg in build-omarchy-packages.sh) can resolve omarchy-
-# only build deps like limine-snapper-sync and limine-mkinitcpio-hook.
+# Put OPR first in the container too so makepkg resolves the same overrides
+# as the online installer configuration.
 if ! grep -q '^\[omarchy\]' /etc/pacman.conf; then
-  awk '/^\[omarchy\]/,/^$/' /configs/pacman-online-${OMARCHY_MIRROR}.conf >> /etc/pacman.conf
+  opr_section=$(awk '/^\[omarchy\]/,/^$/' /configs/pacman-online-${OMARCHY_MIRROR}.conf)
+  awk -v opr="$opr_section" '/^\[core\]/ { print opr; print "" } { print }' \
+    /etc/pacman.conf >/tmp/pacman-opr-first.conf
+  install -m 644 /tmp/pacman-opr-first.conf /etc/pacman.conf
+  rm -f /tmp/pacman-opr-first.conf
 fi
 
 # Build locations
@@ -210,8 +226,15 @@ mapfile -t all_packages < <(
 # "target not found". Published Omarchy runtime packages that predate the rename
 # still list it in omarchy-other.packages, so map it here until every channel
 # ships a runtime that names broadcom-wl-dkms itself.
+# arch-mact2 dropped apple-bcm-firmware on 2026-09-16 in favour of
+# apple-bcm-firmware-fetcher, which does the same job (pull the T2 Wi-Fi and
+# Bluetooth firmware off the macOS volume) but only conflicts with the old name
+# rather than replacing it, so pacman cannot follow the rename on its own.
 mapfile -t all_packages < <(
-  printf '%s\n' "${all_packages[@]}" | sed 's/^broadcom-wl$/broadcom-wl-dkms/' | sort -u
+  printf '%s\n' "${all_packages[@]}" |
+    sed -e 's/^broadcom-wl$/broadcom-wl-dkms/' \
+      -e 's/^apple-bcm-firmware$/apple-bcm-firmware-fetcher/' |
+    sort -u
 )
 
 # With --local-source we already built these omarchy* packages directly into
@@ -285,8 +308,9 @@ printf '%s\n' "${required_package_files[@]}" |
 
 # Rebuild the offline repo db from scratch so size/checksum/depends entries
 # always reflect only the package files selected for this build.
-rm -f "$offline_mirror_dir"/offline.db* "$offline_mirror_dir"/offline.files*
-repo-add "$offline_mirror_dir/offline.db.tar.gz" "$offline_mirror_dir/"*.pkg.tar.zst
+# Every package archive in the mirror, indexed by one repo-add per CPU: one
+# alone hashes and lists a thousand packages one after another.
+bash /builder/index-offline-mirror.sh "$offline_mirror_dir"
 
 # mkarchiso expects the mirror at /var/cache/omarchy/mirror/offline inside the
 # container (the airootfs path); symlink rather than duplicate.
