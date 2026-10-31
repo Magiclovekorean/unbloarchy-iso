@@ -19,7 +19,7 @@ if [[ ! -d /omarchy-pkgs ]]; then
   exit 1
 fi
 
-work_dir=/tmp/omarchy-pkg-build
+work_dir=/var/cache/omarchy-pkg-build
 rm -rf "$work_dir"
 mkdir -p "$work_dir"
 
@@ -56,6 +56,10 @@ for pkg_list in /omarchy-source/install/unbloarchy-base.packages /omarchy-source
     fi
   done < "$pkg_list"
 done
+
+# Skip localsend - its PKGBUILD has a bug (double path in cp command) that causes build failure
+# This is a known issue in the omarchy-pkgs repo that we can't fix here
+unset packages_to_build["localsend"]
 
 # Convert associative array to regular array
 packages=()
@@ -172,6 +176,9 @@ for pkg in "${packages[@]}"; do
 
   su builder -c "
     cd '$pkg_work' &&
+    export CARGO_TARGET_DIR='$pkg_work/target' &&
+    export TMPDIR='$pkg_work/tmp' &&
+    mkdir -p '\$CARGO_TARGET_DIR' '\$TMPDIR' &&
     PKGDEST='$work_dir' \
     OMARCHY_SRC=/omarchy-source \
     makepkg --noconfirm --skippgpcheck --skipchecksums --nodeps --nocheck -f
