@@ -36,6 +36,14 @@ if ! grep -qw landlock /sys/kernel/security/lsm 2>/dev/null; then
   hash -r
 fi
 
+# Replace system pacman.conf with our mirror config BEFORE any pacman operations
+echo "DEBUG: Checking config file..."
+ls -la /configs/pacman-online-${OMARCHY_MIRROR}.conf
+echo "DEBUG: Copying config..."
+cp /configs/pacman-online-${OMARCHY_MIRROR}.conf /etc/pacman.conf
+echo "DEBUG: Verifying copied config..."
+cat /etc/pacman.conf
+
 # Packages installed into the Arch container used to build the ISO.
 pacman-key --init
 pacman --noconfirm -Sy archlinux-keyring
@@ -51,18 +59,10 @@ pacman-key --add /builder/omarchy.gpg
 pacman-key --lsign-key 40DFB630FF42BCFFB047046CF0134EE680CAC571
 
 # omarchy-keyring is needed inside the offline mirror too.
-pacman --config /configs/pacman-online-${OMARCHY_MIRROR}.conf --noconfirm -Sy omarchy-keyring
+pacman --noconfirm -Sy omarchy-keyring
 pacman-key --populate omarchy
 
-# Put OPR first in the container too so makepkg resolves the same overrides
-# as the online installer configuration.
-if ! grep -q '^\[omarchy\]' /etc/pacman.conf; then
-  opr_section=$(awk '/^\[omarchy\]/,/^$/' /configs/pacman-online-${OMARCHY_MIRROR}.conf)
-  awk -v opr="$opr_section" '/^\[core\]/ { print opr; print "" } { print }' \
-    /etc/pacman.conf >/tmp/pacman-opr-first.conf
-  install -m 644 /tmp/pacman-opr-first.conf /etc/pacman.conf
-  rm -f /tmp/pacman-opr-first.conf
-fi
+# OPR section already in our pacman.conf from the copy above
 
 # Build locations
 build_cache_dir=/var/cache
