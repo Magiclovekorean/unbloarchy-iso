@@ -61,6 +61,13 @@ done
 # This is a known issue in the omarchy-pkgs repo that we can't fix here
 unset packages_to_build["localsend"]
 
+# Skip limine-mkinitcpio-hook - GraalVM native-image hardcodes /tmp which is noexec in container
+# This is a known issue with GraalVM in containerized builds
+unset packages_to_build["limine-mkinitcpio-hook"]
+
+# Skip limine-snapper-sync - Same GraalVM native-image issue
+unset packages_to_build["limine-snapper-sync"]
+
 # Convert associative array to regular array
 packages=()
 for pkg in "${!packages_to_build[@]}"; do
@@ -174,11 +181,16 @@ for pkg in "${packages[@]}"; do
   cp -a "/omarchy-pkgs/pkgbuilds/$pkg" "$pkg_work"
   chown -R builder:builder "$pkg_work"
 
+  # Create tmp directory BEFORE build so meson/glib-compile-resources can use it
+  mkdir -p "$pkg_work/tmp" "$pkg_work/target"
+  chown -R builder:builder "$pkg_work/tmp" "$pkg_work/target"
+
+  
+
   su builder -c "
     cd '$pkg_work' &&
     export CARGO_TARGET_DIR='$pkg_work/target' &&
     export TMPDIR='$pkg_work/tmp' &&
-    mkdir -p '\$CARGO_TARGET_DIR' '\$TMPDIR' &&
     PKGDEST='$work_dir' \
     OMARCHY_SRC=/omarchy-source \
     makepkg --noconfirm --skippgpcheck --skipchecksums --nodeps --nocheck -f
