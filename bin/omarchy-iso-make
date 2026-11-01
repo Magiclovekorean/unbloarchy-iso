@@ -40,6 +40,16 @@ while [[ $# -gt 0 ]]; do
     OMARCHY_ISO_REF=local
     shift 3
     ;;
+  --local-config)
+    LOCAL_OMARCHY_PATH="${2:-}"
+    if [[ -z $LOCAL_OMARCHY_PATH ]]; then
+      echo "Error: --local-config requires one arg: <omarchy-checkout>" >&2
+      exit 1
+    fi
+    OMARCHY_MIRROR=edge
+    OMARCHY_ISO_REF=local
+    shift 2
+    ;;
   --dev)
     OMARCHY_ISO_REF=dev
     OMARCHY_MIRROR=edge
@@ -57,7 +67,7 @@ while [[ $# -gt 0 ]]; do
     ;;
   *)
     echo "Unknown option: $1"
-    echo "Usage: $0 [--no-cache] [--keep-pkg-cache] [--no-boot-offer] [--debug] [--edge] [--dev|--rc] [--local-source <omarchy-checkout> <pkgs-checkout>]"
+    echo "Usage: $0 [--no-cache] [--keep-pkg-cache] [--no-boot-offer] [--debug] [--edge] [--dev|--rc] [--local-source <omarchy-checkout> <pkgs-checkout>] [--local-config <omarchy-checkout>]"
     exit 1
     ;;
   esac
@@ -65,9 +75,12 @@ done
 
 if [[ -n $LOCAL_OMARCHY_PATH ]]; then
   [[ -d $LOCAL_OMARCHY_PATH ]] || { echo "Error: Omarchy checkout not found at $LOCAL_OMARCHY_PATH" >&2; exit 1; }
-  [[ -d $LOCAL_PKGS_PATH ]]    || { echo "Error: pkgs checkout not found at $LOCAL_PKGS_PATH" >&2; exit 1; }
   LOCAL_OMARCHY_PATH=$(realpath "$LOCAL_OMARCHY_PATH")
-  LOCAL_PKGS_PATH=$(realpath "$LOCAL_PKGS_PATH")
+  # Only validate pkgs path if --local-source was used (not --local-config)
+  if [[ -n $LOCAL_PKGS_PATH ]]; then
+    [[ -d $LOCAL_PKGS_PATH ]] || { echo "Error: pkgs checkout not found at $LOCAL_PKGS_PATH" >&2; exit 1; }
+    LOCAL_PKGS_PATH=$(realpath "$LOCAL_PKGS_PATH")
+  fi
 fi
 
 lint_file_permissions() {
@@ -139,8 +152,11 @@ DOCKER_ARGS=(
 if [[ -n $LOCAL_OMARCHY_PATH ]]; then
   DOCKER_ARGS+=(
     -v "$LOCAL_OMARCHY_PATH:/omarchy-source:ro"
-    -v "$LOCAL_PKGS_PATH:/omarchy-pkgs:ro"
   )
+  # Only mount pkgs if --local-source was used (LOCAL_PKGS_PATH is set)
+  if [[ -n $LOCAL_PKGS_PATH ]]; then
+    DOCKER_ARGS+=(-v "$LOCAL_PKGS_PATH:/omarchy-pkgs:ro")
+  fi
 fi
 
 if [[ -d /var/cache/pacman/pkg ]]; then
